@@ -1,0 +1,24 @@
+FROM smartgic/ovos-skill-base:stable
+
+ENV PYTHONUNBUFFERED=1
+ENV LOG_LEVEL=DEBUG
+
+USER root
+
+RUN pip install --no-cache-dir \
+    "setuptools<81" \
+    requests \
+    debugpy
+
+RUN mkdir -p /home/ovos/skill/ovos-skill-test && \
+    chown -R ovos:ovos /home/ovos/skill
+
+WORKDIR /home/ovos/skill/ovos-skill-test
+
+COPY --chown=ovos:ovos . .
+
+USER ovos
+
+RUN pip install -e .
+
+ENV PATH="/home/ovos/.venv/bin:$PATH"

@@ -1,0 +1,58 @@
+2026-02-20 16:31:21,083 - Move_sensor - Distances (cm): F=38.91, L=16.28, R=79.15
+2026-02-20 16:31:21,083 - Move_sensor - !!! Obstacle detected. Entering Avoidance Mode !!!
+2026-02-20 16:31:21,102 - Move_sensor - run backward by encoder
+2026-02-20 16:31:21,113 - Move_sensor - Run backward 600 steps...
+2026-02-20 16:31:21,113 - Move_sensor - Reverse backward left-org: 1926 -right-org: 1985
+2026-02-20 16:31:21,153 - Move_sensor - Turning from 78.5 to 153.5
+2026-02-20 16:31:21,203 - Move_sensor - Current Heading: 64.9, Target: 153.5, Error: 88.7
+2026-02-20 16:31:21,258 - Move_sensor - Current Heading: 82.8, Target: 153.5, Error: 70.8
+2026-02-20 16:31:21,297 - Move_sensor - Current Heading: 83.3, Target: 153.5, Error: 70.2
+2026-02-20 16:31:21,337 - Move_sensor - Current Heading: 92.3, Target: 153.5, Error: 61.2
+2026-02-20 16:31:21,389 - Move_sensor - Current Heading: 108.1, Target: 153.5, Error: 45.4
+2026-02-20 16:31:21,441 - Move_sensor - Current Heading: 104.5, Target: 153.5, Error: 49.0
+2026-02-20 16:31:21,480 - Move_sensor - Current Heading: 104.5, Target: 153.5, Error: 49.0
+2026-02-20 16:31:21,519 - Move_sensor - Current Heading: 93.3, Target: 153.5, Error: 60.2
+2026-02-20 16:31:21,565 - Move_sensor - Current Heading: 101.6, Target: 153.5, Error: 51.9
+2026-02-20 16:31:21,604 - Move_sensor - Current Heading: 94.3, Target: 153.5, Error: 59.2
+2026-02-20 16:31:21,655 - Move_sensor - Current Heading: 90.5, Target: 153.5, Error: 63.0
+2026-02-20 16:31:21,717 - Move_sensor - Current Heading: 99.3, Target: 153.5, Error: 54.3
+2026-02-20 16:31:21,756 - Move_sensor - Current Heading: 96.2, Target: 153.5, Error: 57.3
+2026-02-20 16:31:21,795 - Move_sensor - Current Heading: 96.8, Target: 153.5, Error: 56.7
+2026-02-20 16:31:21,847 - Move_sensor - Current Heading: 92.5, Target: 153.5, Error: 61.1
+2026-02-20 16:31:21,887 - Move_sensor - Current Heading: 98.1, Target: 153.5, Error: 55.4
+2026-02-20 16:31:21,956 - Move_sensor - Current Heading: 101.0, Target: 153.5, Error: 52.5
+2026-02-20 16:31:22,006 - Move_sensor - Current Heading: 98.5, Target: 153.5, Error: 55.0
+2026-02-20 16:31:22,046 - Move_sensor - Current Heading: 92.8, Target: 153.5, Error: 60.7
+2026-02-20 16:31:22,101 - Move_sensor - Current Heading: 100.9, Target: 153.5, Error: 52.6
+2026-02-20 16:31:22,155 - Move_sensor - Current Heading: 99.8, Target: 153.5, Error: 53.7
+2026-02-20 16:31:22,194 - Move_sensor - Current Heading: 108.1, Target: 153.5, Error: 45.4
+2026-02-20 16:31:22,259 - Move_sensor - Current Heading: 88.3, Target: 153.5, Error: 65.2
+2026-02-20 16:31:22,299 - Move_sensor - Current Heading: 94.6, Target: 153.5, Error: 59.0
+2026-02-20 16:31:22,338 - Move_sensor - Current Heading: 95.8, Target: 153.5, Error: 57.7
+2026-02-20 16:31:22,377 - Move_sensor - Current Heading: 93.1, Target: 153.5, Error: 60.4
+2026-02-20 16:31:22,432 - Move_sensor - Current Heading: 100.3, Target: 153.5, Error: 53.3
+2026-02-20 16:31:22,485 - Move_sensor - Current Heading: 105.2, Target: 153.5, Error: 48.3
+2026-02-20 16:31:22,524 - Move_sensor - Current Heading: 89.4, Target: 153.5, Error: 64.1
+2026-02-20 16:31:22,579 - Move_sensor - Current Heading: 99.3, Target: 153.5, Error: 54.2
+2026-02-20 16:31:22,618 - Move_sensor - Current Heading: 97.1, Target: 153.5, Error: 56.4
+2026-02-20 16:31:22,671 - Move_sensor - Current Heading: 102.2, Target: 153.5, Error: 51.4
+2026-02-20 16:31:22,733 - Move_sensor - Current Heading: 110.8, Target: 153.5, Error: 42.7
+2026-02-20 16:31:22,772 - Move_sensor - Current Heading: 95.2, Target: 153.5, Error: 58.3
+2026-02-20 16:31:22,811 - Move_sensor - Current Heading: 106.2, Target: 153.5, Error: 47.3
+2026-02-20 16:31:22,864 - Move_sensor - Current Heading: 98.0, Target: 153.5, Error: 55.5
+2026-02-20 16:31:22,903 - Move_sensor - Current Heading: 97.1, Target: 153.5, Error: 56.4
+2026-02-20 16:31:22,942 - Move_sensor - Current Heading: 100.0, Target: 153.5, Error: 53.5
+2026-02-20 16:31:23,022 - Move_sensor - Current Heading: 97.3, Target: 153.5, Error: 56.2
+2026-02-20 16:31:23,062 - Move_sensor - Current Heading: 112.6, Target: 153.5, Error: 40.9
+2026-02-20 16:31:23,117 - Move_sensor - Current Heading: 99.3, Target: 153.5, Error: 54.3
+2026-02-20 16:31:23,172 - Move_sensor - Current Heading: 100.3, Target: 153.5, Error: 53.3
+2026-02-20 16:31:23,211 - Move_sensor - Current Heading: 106.2, Target: 153.5, Error: 47.3
+2026-02-20 16:31:23,276 - Move_sensor - Current Heading: 94.6, Target: 153.5, Error: 59.0
+2026-02-20 16:31:23,315 - Move_sensor - Current Heading: 95.2, Target: 153.5, Error: 58.3
+2026-02-20 16:31:23,354 - Move_sensor - Current Heading: 98.4, Target: 153.5, Error: 55.1
+2026-02-20 16:31:23,393 - Move_sensor - Current Heading: 102.5, Target: 153.5, Error: 51.1
+2026-02-20 16:31:23,448 - Move_sensor - Current Heading: 96.2, Target: 153.5, Error: 57.3
+2026-02-20 16:31:23,459 - image_app_core - image_app_core: route
+192.168.4.117 - - [20/Feb/2026 16:31:23] "POST /control HTTP/1.1" 200 -
+2026-02-20 16:31:23,517 - Move_sensor - Current Heading: 100.8, Target: 153.5, Error: 52.7
+2026-02-20 16:31:23,527 - Move_app - Command: set_stop

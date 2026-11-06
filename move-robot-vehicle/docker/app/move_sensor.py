@@ -1,0 +1,179 @@
+import time
+from Raspi_MotorHAT import Raspi_MotorHAT
+from core_utils import CoreUtils, RobotStopException
+
+COLLISION_DISTANCE_M = 20 # Collision Threshold in meters (25 cm)
+TURN_STEPS = 600
+
+class SensorRobotCar:
+    """Class to encapsulate motor control and sensor reading for the vehicle."""
+    
+    def __init__(self, behavior, speed):
+        self.logger = CoreUtils.getLogger("Move_sensor")
+    
+        self.behavior = behavior
+        self.move_app = behavior.move_app
+
+        self.motor_left, self.motor_right = self.move_app.move_motor.getMotors()
+        self.speed = speed
+        self.set_speed(speed)
+
+        self.sensor_mid = self.move_app.sensor_mid
+        self.sensor_left = self.move_app.sensor_left
+        self.sensor_right = self.move_app.sensor_right
+
+        self.right_encoder = self.move_app.robot.right_encoder
+        self.left_encoder = self.move_app.robot.left_encoder
+
+    def set_speed(self, speed):
+        self.motor_left.setSpeed(speed)
+        self.motor_right.setSpeed(speed)
+
+    def forward(self):
+        self.set_speed(self.speed)
+        self.motor_left.run(Raspi_MotorHAT.FORWARD)
+        self.motor_right.run(Raspi_MotorHAT.FORWARD)
+
+    def stop(self):
+        self.motor_left.run(Raspi_MotorHAT.RELEASE)
+        self.motor_right.run(Raspi_MotorHAT.RELEASE)
+
+    def reverse_slightly_timer(self):
+        self.logger.info("Reversing Slightly")
+        self.motor_left.run(Raspi_MotorHAT.BACKWARD)
+        self.motor_right.run(Raspi_MotorHAT.BACKWARD)
+        time.sleep(0.5)
+        self.stop()
+
+    def reverse_by_encoder(self):
+
+        self.logger.info("run backward by encoder")
+        drive_controller = self.behavior.drive_controller
+        
+        self.motor_left.setSpeed(self.speed)
+        self.motor_right.setSpeed(self.speed)
+        self.motor_left.run(Raspi_MotorHAT.BACKWARD)
+        self.motor_right.run(Raspi_MotorHAT.BACKWARD)
+        
+        self.logger.info(f"Run backward {TURN_STEPS} steps...")
+        left_ok = False
+        right_ok = False
+        while True:
+            left_currentSteps = drive_controller.abs_left_encoder()
+            right_currentSteps = drive_controller.abs_right_encoder()
+            self.logger.info(f"Reverse backward left-org: {left_currentSteps} -right-org: {right_currentSteps}")
+            if (left_currentSteps > TURN_STEPS):
+                self.motor_left.run(Raspi_MotorHAT.RELEASE)
+                left_ok = True
+            if (right_currentSteps > TURN_STEPS):
+                self.motor_right.run(Raspi_MotorHAT.RELEASE)
+                right_ok = True
+            if left_ok and right_ok:
+                self.stop()
+                return True
+            self.behavior.drive_controller.check_for_stop()
+            time.sleep(0.1)
+
+    def abs_left_encoder(self):
+       left = abs(self.left_encoder.steps)
+       self.logger.info(f"Reverse backward left: {left}")
+       return left
+    
+    def abs_right_encoder(self):
+       right = abs(self.right_encoder.steps)
+       self.logger.info(f"Reverse backward right: {right}")
+       return right
+       
+    def turn_gyro(self, angle_delta):
+        """
+        Rotates the robot by a specific number of degrees relative to current position.
+        angle_delta: positive for right, negative for left.
+        """
+        # 1. Capture where we are starting from
+        start_heading = self.behavior.drive_controller.get_calibrated_heading()
+        target_heading = (start_heading + angle_delta) % 360
+        
+        self.logger.info(f"Turning from {start_heading:.1f} to {target_heading:.1f}")
+        
+        # 2. Set motors to rotate (Pivot)
+        speed = 150 # Fixed rotation speed
+        if angle_delta < 0: # Right
+            self.motor_left.run(Raspi_MotorHAT.FORWARD)
+            self.motor_right.run(Raspi_MotorHAT.BACKWARD)
+        else: # Left
+            self.motor_left.run(Raspi_MotorHAT.BACKWARD)
+            self.motor_right.run(Raspi_MotorHAT.FORWARD)
+        
+        self.set_speed(speed)
+        start_loop = time.time()
+        # 3. Monitor the turn
+        while True:
+            self.behavior.drive_controller.check_for_stop()
+
+            current_h = self.behavior.drive_controller.get_calibrated_heading()
+            # How much further do we have to go?
+            error = self.behavior.drive_controller.calculate_heading_error(target_heading, current_h)
+            self.logger.info(f"Current Heading: {current_h:.1f}, Target: {target_heading:.1f}, Error: {error:.1f}")
+            # Stop if we are within 2 degrees of the target
+            if error < 2.0:
+                break
+            if time.time() - start_loop > 5.0:
+                self.logger.warning(f"Turn timed out due to excessive error. {start_loop:.1f} seconds elapsed.")
+                break
+            time.sleep(0.01)
+
+        self.stop()
+        self.logger.info(f"Turn complete, new heading {current_h:.1f} degrees reached.")
+
+    ANGLE_TURN_THRESHOLD = 15 # Degrees of error to trigger a turn during avoidance
+    # Update the helper methods to use the new logic:
+    def turn_left(self):
+        self.turn_gyro(-(90-self.ANGLE_TURN_THRESHOLD))
+
+    def turn_right(self):
+        self.turn_gyro(90-self.ANGLE_TURN_THRESHOLD)
+
+    def get_distances_cm(self):
+        """Returns distance readings in centimeters."""
+        # DistanceSensor.distance property returns value in meters
+        # If sensor returns 0, it usually means 'out of range' or 'error'
+        # Treat 0 as a large distance (e.g., 200cm) to prevent infinite avoidance loops
+        d_mid= abs(round(self.sensor_mid.distance * 100, 2))
+        if d_mid <= 0: d_mid = 200
+        d_left = abs(round(self.sensor_left.distance * 100, 2))
+        if d_left <= 0: d_left = 200
+        d_right = abs(round(self.sensor_right.distance * 100, 2))
+        if d_right <= 0: d_right = 200
+        return d_mid, d_left, d_right
+
+    def isCriticalDistance(self):
+        d_mid, d_left, d_right = self.get_distances_cm()
+        self.logger.info(f"Distances (cm): F={d_mid}, L={d_left}, R={d_right}")
+        return d_mid < COLLISION_DISTANCE_M or d_left < COLLISION_DISTANCE_M or d_right < COLLISION_DISTANCE_M
+    
+    def run_avoidance_check(self, speed):
+        """The main collision avoidance logic, now interruptible."""
+        try:
+            if self.isCriticalDistance():
+                self.logger.info("!!! Obstacle detected. Entering Avoidance Mode !!!")
+                self.stop()
+                
+                # 1. Back up (Now checks for stop during the reverse loop)
+                if not self.reverse_by_encoder():
+                    return False # Stop received during reverse
+                
+                # Check stop again before turning
+                self.behavior.drive_controller.check_for_stop()
+                
+                dist_mid, dist_left, dist_right = self.get_distances_cm()
+                
+                if dist_left > dist_right:
+                    self.turn_left() # turn_gyro now includes check_for_stop
+                else:
+                    self.turn_right()
+                
+                return True 
+            return False
+        except RobotStopException:
+            # Re-raise to be caught by the main run() loop
+            raise

@@ -1,0 +1,10 @@
+stop vehicle
+(we|i) stop vehicle
+start vehicle
+(we|i) start vehicle
+(engine|motor) (start|stop)
+(we|i) (engine|motor) (start|stop)
+turn (off|on) the vehicle
+(we|i) turn (off|on) the vehicle
+(activate|deactivate) the engine
+(we|i) (activate|deactivate) the engine

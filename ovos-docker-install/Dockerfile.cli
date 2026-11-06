@@ -1,0 +1,22 @@
+FROM smartgic/ovos-cli:testing
+
+USER root
+RUN apt-get update && \
+    apt-get install -y gcc g++ python3-espeak espeak-ng python3-dev libasound2-dev libportaudio2 portaudio19-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Ensure the state directory exists and the ovos user owns it
+RUN mkdir -p /home/ovos/.local/state && chown -R ovos:ovos /home/ovos/
+
+USER ovos
+
+RUN . ~/.venv/bin/activate && pip install --no-cache-dir ovos-bus-client ovos-cli-client 
+# ovos-skill-debug
+
+COPY --chown=ovos:ovos ./ovos-skill-debug/bus_monitor.py /home/ovos/bus_monitor.py
+COPY --chown=ovos:ovos ./ovos-skill-debug/bus_monitor_speak.py /home/ovos/bus_monitor_speak.py
+COPY --chown=ovos:ovos ./ovos-skill-debug/bus_speak.py /home/ovos/bus_speak.py
+
+# This version uses regex to find the function and replaces whatever is in the 
+# brackets with (*args, **kwargs) to ensure it never misses an argument again.
+RUN find ~/.venv/lib/python3.13/site-packages/ -name "*.py" -exec sed -i 's/def found_wake_word(self.*):/def found_wake_word(self, *args, **kwargs):/g' {} +

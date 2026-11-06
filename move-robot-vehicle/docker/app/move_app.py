@@ -1,0 +1,350 @@
+import time
+import os, signal
+from unittest import case
+
+from rich_click import command
+from robot_gpio import Robot
+import requests
+import json
+from matrix_display import MatrixDisplay
+from move_motor import Move_motor
+from core_utils import CoreUtils
+from image_app_core import clear_queue, put_control_instruction
+from joystick_adapter import JoystickAdapter
+
+# The URL of your Flask voice server
+# Make sure to use the correct IP address and port
+URL = "http://192.168.4.6:5500/speak_local"
+
+MINIMUM_DIST = 0.1
+# The headers specify that you are sending JSON data
+headers = {
+    "Content-Type": "application/json"
+}
+
+class Move_app:
+    def __init__(self):
+        self.logger = CoreUtils.getLogger("Move_app")
+        self.matrixDisplay = MatrixDisplay()
+        # Set pan and tilt to middle, then clear it.
+        self.robot = Robot()
+        
+        # warm up and servo move time
+        time.sleep(0.1)
+        self.move_motor = Move_motor()
+        # set vertical angle
+
+        self.speed_right = 0
+        self.speed_left = 0
+        self.forward_speed = 0
+        self.forward_distance = 0
+        self.last_time = time.time()
+
+        self._sensor_mid = self.robot.mid_distance_sensor
+        self._sensor_left = self.robot.left_distance_sensor
+        self._sensor_right = self.robot.right_distance_sensor
+
+        self.joystick = None
+        self.joystick = JoystickAdapter(
+            self,
+            device_path="/dev/input/event5",
+        )
+
+        self.joystick.connect_joystick()
+
+        if (self.joystick.is_joystick_connected()):
+            self.joystick.start()
+        else:
+            self.joystick.stop()
+            self.logger.info("Move_app:Joystick not connected, skipping joystick activation.")
+
+        self.logger.info("Move_app:Move-app init completed")
+
+    @property
+    def sensor_mid(self):
+        return self._sensor_mid
+
+    @property
+    def sensor_left(self):
+        return self._sensor_left  
+
+    @property
+    def sensor_right(self):
+        return self._sensor_right   
+
+    def setDriveController(self, drive_controller):
+        self.drive_controller = drive_controller
+        
+    def exit_server(self, server):
+        if server and server.is_alive():
+            self.logger.info(f"Move_app:Sending SIGINT to PID {server.pid}...")
+            os.kill(server.pid, signal.SIGINT)  # graceful shutdown
+            server.join(timeout=3)
+
+            # Fallback in case SIGINT didn't work
+            if server.is_alive():
+                self.logger.debug("Move_app:SIGINT failed, force terminating...")
+                server.terminate()
+                server.join()
+            self.matrixDisplay.showTemperature()
+            self.logger.info("Server stopped cleanly.")
+        else:
+            self.logger.debug("Server not running.")
+
+    def is_stop_type(self, instruction):
+        if instruction is not None:
+            command = instruction['command']
+            self.logger.info(f"Command: {command}")
+            if command == "set_stop":
+                return True
+            if command == "exit":
+                return True
+        return False
+
+    def handle_instruction(self, instruction, process):
+      command = instruction['command']
+      self.logger.info(f"Command: {command}")
+      for key, value in instruction.items() :
+        self.logger.info(f"Move_app:{key}: {value}")
+      self.logger.info(f"instruction printed: {instruction}")
+      type = "-"
+    
+      if command == "set_left":
+        type = "L"
+        left_speed = int(instruction['speed'])
+        self.move_motor.run_left(left_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:Left-speed: {left_speed:.2f}")
+      elif command == "set_right":
+        type = "R"
+        right_speed = int(instruction['speed'])
+        self.move_motor.run_right(right_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:Right-speed: {right_speed:.2f}")
+      elif command == "set_backward":
+        type = "B"
+        backward_speed = int(instruction['speed'])
+        self.move_motor.run_backward(backward_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:Backward-speed: {backward_speed:.2f}")
+      elif command == "set_forward":
+        type = "F"
+        self.forward_speed = int(instruction['speed'])
+        self.forward_distance = int(instruction['distance'])
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app forward: speed: {self.forward_speed:.2f} | distance: {self.forward_distance:.2f}")
+      elif command == "set_forward_left":
+        type = "M"
+        left_forward_speed = int(instruction['speed'])
+        self.move_motor.left_forward(left_forward_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:forward_left-speed: {left_forward_speed:.2f}")
+      elif command == "set_forward_right":
+        type = "R"
+        right_forward_speed = int(instruction['speed'])
+        self.move_motor.right_forward(right_forward_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:forward_right-speed: {right_forward_speed:.2f}")
+      elif command == "set_backward_left":
+        type = "M"
+        left_backward_speed = int(instruction['speed'])
+        self.move_motor.left_backward(left_backward_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:backward_left-speed: {left_backward_speed:.2f}")
+      elif command == "set_backward_right":
+        type = "R"
+        right_backward_speed = int(instruction['speed'])
+        self.move_motor.right_backward(right_backward_speed)
+        self.robot.set_led_red()
+        self.logger.info(f"Move_app:backward_right-speed: {right_backward_speed:.2f}")
+      elif command == "set_stop":
+        type = "X"
+        self.move_motor.turn_off_motors()
+        clear_queue()
+        self.robot.set_led_blue()
+        self.logger.info("Move_app:Stop-run")
+      elif command == "set_start_gpad":
+        self.logger.info("Move_app:enter gpad activate")
+        type = "Y"
+        self.robot.set_led_cyan()
+   
+        self.logger.info("Move_app:Start gpad activation")
+        self.move_motor.turn_off_motors()
+        clear_queue()
+        self.joystick.connect_joystick()
+        self.joystick.start()
+
+        self.robot.set_led_green()
+        self.logger.info("Move_app:gpad activation completed")
+      elif command == "set_stop_gpad":
+        self.logger.info("Move_app:stop gpad activation")
+        type = "Z"
+        self.robot.set_led_purple()
+      
+        self.logger.info("Move_app:deactivate gpad")
+        self.move_motor.turn_off_motors()
+        clear_queue()
+
+        self.joystick.stop()
+
+        self.robot.set_led_green()
+        self.logger.info("Move_app:gpad deactivated")
+      elif command == "exit":
+         self.logger.info("Move_app:Move_app:exiting")
+         type = "-"
+         self.move_motor.turn_off_motors()
+         self.robot.set_led_blue()
+         self.logger.info("Move_app:Exit-run")
+         if self.joystick:
+            self.joystick.stop()  # Stop the joystick thread if it's running
+         if process is not None:
+            self.exit_server(process)
+         exit()
+      else:
+        raise ValueError(f"Move_app:Unknown instruction: {instruction}")
+      
+      return type
+
+    def handle_joystick(self, instruction):
+        self.logger.info(f"Move_app:Joystick {instruction['left_speed']} - {instruction['right_speed']}")
+        left_speed = int(instruction['left_speed'])
+        right_speed = int(instruction['right_speed'])
+        self.move_motor.run_joystick(left_speed, right_speed)
+        self.robot.set_led_coolblue()
+        self.logger.info(f"Move_app:joystick-speed: {left_speed:.2f} - {right_speed:.2f}")
+      
+
+    def handle_joystick_queue(self, instruction):
+        self.robot.set_led_white()
+        self.logger.info(f"Move_app:Joystick queue -> {instruction['command']} - {instruction['speed']}")
+        put_control_instruction(instruction)
+        self.logger.info(f"Move_app:Joystick handle_joystick_queue {instruction}")
+
+    def say_text(self, text):
+        ## curl -X POST "http://<YOUR_PI_IP>:5500/speak_local" \
+        ##     -H "Content-Type: application/json" \
+        ##     -d '{"text": "Die Temperatur im Wohnzimmer beträgt 21 Grad.", "volume": 2.5}'
+        try:
+            # Create the data payload as a dictionary
+            payload = {
+                "text": text,
+                "volume": "2.5"
+            }
+
+            # Send a POST request to the server with the JSON data
+            self.logger.info(f"Sending request to {URL}...")
+            response = requests.post(URL, data=json.dumps(payload), headers=headers, timeout=15)
+
+            # Check if the request was successful
+            if response.status_code == 200:
+                self.logger.info("Success! The voice server received the request.")
+                self.logger.info("Voice Server response: %s", response.status_code)
+            else:
+                self.logger.error(f"Voice Server Error! Status code: {response.status_code} - {response.text}")
+
+        except requests.exceptions.ConnectionError as e:
+            self.logger.error(f"Failed to connect to the Voice Server at {URL}.")
+            self.logger.error("Please ensure the voice Voice Server is running and accessible.")
+            self.logger.error(f"Error details: {e}")      
+    
+    def stopMotors(self):
+        self.logger.info("move_app-stopMotors")
+        self.move_motor.turn_off_motors()
+
+    def run_forward(self, speed):
+        self.move_motor.run_forward(speed)
+
+    def run_backward(self, speed):
+        self.move_motor.run_backward(speed)
+
+    def isCriticalDistance(self):
+        # Get the sensor readings in meters
+        left_distance = self.sensor_left.distance
+        right_distance = self.sensor_right.distance
+        mid_distance = self.sensor_mid.distance
+        ##print("Left: {l:.2f}, Right: {r:.2f}".format(l=left_distance, r=right_distance))
+        if left_distance < MINIMUM_DIST or right_distance < MINIMUM_DIST or mid_distance < MINIMUM_DIST:
+            self.logger.info("move_app:critical distance, Left: {0:.2f} cm, Right: {1:.2f} cm, Mid: {1:.2f} cm".format(
+                  left_distance * 100, right_distance * 100, mid_distance * 100))
+            return True
+        else:
+            return False
+        
+    def isLeftDistance(self):
+        return abs(self.sensor_left.distance) < MINIMUM_DIST
+    
+    def isRightDistance(self):
+        return abs(self.sensor_right.distance) < MINIMUM_DIST
+    
+    def isMidDistance(self):
+        return abs(self.sensor_mid.distance) < MINIMUM_DIST
+
+    def isCommand(self, type):
+        self.logger.info(f"Move_app:isCommand type = {type}")
+        match type:
+            case "F":
+                return True
+            case "R":
+                return True
+            case "L":
+                return True
+            case "B":
+                return True
+            case "M":
+                return True
+            case _:
+                return False
+            
+    def isTurn(self, type):
+        match type:
+            case "L":
+                return True
+            case "B":
+                return True
+            case _:
+                return False
+            
+    def isStop(self, type):
+        match type:
+            case "X":
+                return True
+            case _:
+                return False
+
+    def isGPad(self, type):
+        match type:
+            case "Y":
+                return True
+            case "Z":
+                return True
+            case "J":
+                return True
+            case _:
+                return False
+
+    def setMatrixString(self, text):
+        self.matrixDisplay.showString(text)
+
+    def set_led_red(self):
+        self.robot.set_led_red()
+
+    def set_led_blue(self):
+        self.robot.set_led_blue()
+
+    def set_led_green(self):
+        self.robot.set_led_green()
+
+    def set_led_orange(self):
+        self.robot.set_led_orange()
+
+    def set_led_pink(self):
+        self.robot.set_led_pink()
+
+    def set_led_yellow(self):
+        self.robot.set_led_yellow()
+
+    def set_led_purple(self):
+        self.robot.set_led_purple()
+
+    def set_led_white(self):
+        self.robot.set_led_white()

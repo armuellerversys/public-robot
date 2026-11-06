@@ -1,0 +1,191 @@
+<html class="move_drive">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <link rel="stylesheet" type="text/css" href="/static/display.css?">
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="/static/touch-slider.js"></script>
+    <title>Forward Drive The Robot</title>
+</head>
+
+<body>
+    <p id="message"></p>
+    <div class="layout">
+        <svg id="left_slider" class="slider_track" viewBox="-10 -100 20 200">
+            <circle r="18" class="slider_tick"/>
+        </svg>
+
+        <div class="content">
+            <div class="input-row">
+                <div class="input-group">
+                    <label for="speed_input">Speed</label>
+                    <input type="number" id="speed_input" name="Speed" min="1" max="255" value="200">
+                </div>
+                <div class="input-group">
+                    <label for="distance_input">Distance</label>
+                    <input type="number" id="distance_input" name="Distance" min="1" max="10000" value="3000">
+                </div>
+            </div>
+            <div class="button-row">
+                <a class="button" id="forwardbutton">Forward</a>
+                <a class="button" id="backwardbutton">Backward</a>
+                <a class="button" id="rightbutton">Right</a>
+                <a class="button" id="leftbutton">Left</a>
+                
+            </div>
+            <div class="button-row">
+                <a class="button" id="stopbutton">Stop</a>
+                <a class="button" id="exitbutton">Exit</a>
+                <a class="button" id="start_gpad">gpStart</a>
+                <a class="button" id="stop_gpad">gpStop</a>
+            </div>
+            <div id="video">
+                <img id="video-feed" src="http://192.168.4.6:5000/video_feed"/>
+            </div>
+        </div>
+
+        <svg id="right_slider" class="slider_track" viewBox="-10 -100 20 200">
+            <circle r="18" class="slider_tick"/>
+        </svg>
+    </div>
+
+<script type="text/javascript">
+    function adjustSpeed(speed) {
+        return Math.round(speed * 2.5);
+    }
+
+    function set_motor(name) {
+        console.log("set_motor called:", name);
+
+        const speedInput = document.getElementById("speed_input");
+        const distanceInput = document.getElementById("distance_input");
+
+        let speed = parseInt(speedInput.value, 10);
+        let distance = parseInt(distanceInput.value, 10);
+
+        speed = Math.min(255, Math.max(1, speed));
+        distance = Math.min(10000, Math.max(1, distance));
+
+        let htmlCmd = 'set_' + name + ' -> speed:' + speed + ' -> distance:' + distance;
+
+        console.log("Post value:", htmlCmd);
+
+        document.getElementById("message").innerHTML = htmlCmd;
+
+        $.post('/control', {
+            command: 'set_' + name,
+            speed: speed,
+            distance: distance
+        })
+        .done(function(response) {
+            console.log("CONTROL OK:", response);
+        })
+        .fail(function(xhr, status, error) {
+            console.error("CONTROL ERROR:", xhr.status, status, error);
+            document.getElementById("message").innerHTML = "CONTROL ERROR: " + xhr.status + " " + error;
+        });
+    }
+
+    function handleSliderChange(side, rawSpeed) {
+        let speed = Math.round(rawSpeed * 2.55);
+
+        if (Math.abs(speed) === 0) {
+            set_motor('stop');
+            return;
+        }
+
+        const dir = speed > 0 ? 'forward' : 'backward';
+        const commandName = dir + '_' + side;
+        
+        set_motor_custom(commandName, Math.abs(speed));
+    }
+
+    function set_motor_custom(name, speed) {
+        const distanceInput = document.getElementById("distance_input");
+        let distance = parseInt(distanceInput.value, 10);
+        distance = Math.min(10000, Math.max(1, distance));
+
+        let htmlCmd = 'set_' + name + ' -> speed:' + speed + ' -> distance:' + distance;
+        console.log("Post value:", htmlCmd);
+
+        document.getElementById("message").innerHTML = htmlCmd;
+
+        $.post('/control', {
+            command: 'set_' + name,
+            speed: speed,
+            distance: distance
+        })
+        .done(function(response) {
+            console.log("CONTROL OK:", response);
+        })
+        .fail(function(xhr, status, error) {
+            console.error("CONTROL ERROR:", xhr.status, status, error);
+            document.getElementById("message").innerHTML = "CONTROL ERROR: " + xhr.status + " " + error;
+        });
+    }
+
+    function checkServerStatus() {
+        fetch("/ping")
+            .then(response => {
+                if (!response.ok) throw new Error('Server not OK');
+                setTimeout(checkServerStatus, 5000);
+            })
+            .catch(error => {
+                console.error("Server down, redirecting:", error);
+                window.location.href = "/dead_page";
+            });
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        setTimeout(checkServerStatus, 5000);
+
+        // Helper function for mobile touch-friendly button binding
+        function bindButton(id, callback) {
+            const btn = $(id);
+            btn.on('pointerdown touchstart', function(e) {
+                e.preventDefault(); // Prevents double firing with click
+                callback();
+            });
+        }
+
+        // Touch & Click resilient bindings
+        bindButton('#exitbutton', function() {
+            $.post('/control', { 'command': 'exit' }, () => {
+                setTimeout(() => { window.location.href = "/dead_page"; }, 500);
+            });
+        });
+
+        bindButton('#stopbutton', () => set_motor('stop'));
+        bindButton('#forwardbutton', () => set_motor('forward'));
+        bindButton('#backwardbutton', () => set_motor('backward'));
+        bindButton('#rightbutton', () => set_motor('right'));
+        bindButton('#leftbutton', () => set_motor('left'));
+        
+        bindButton('#start_gpad', function() {
+            set_motor('start_gpad');
+                document.body.classList.add('gpad-active'); // Turns background green
+        });
+
+        bindButton('#stop_gpad', function() {
+            set_motor('stop_gpad');
+            document.body.classList.remove('gpad-active'); // Resets background color
+        });
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case "ArrowUp": set_motor('forward'); break;
+                case "ArrowDown": set_motor('backward'); break;
+                case "ArrowRight": set_motor('right'); break;
+                case "ArrowLeft": set_motor('left'); break;
+                case " ": set_motor('stop'); break;
+            }
+        });
+
+        // Initialize sliders
+        makeSlider('left_slider', speed => handleSliderChange('left', speed));
+        makeSlider('right_slider', speed => handleSliderChange('right', speed));
+    });
+</script>
+    
+</body>
+</html>

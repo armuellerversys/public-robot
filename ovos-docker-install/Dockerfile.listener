@@ -1,0 +1,33 @@
+FROM smartgic/ovos-listener:testing
+
+USER root
+
+RUN mkdir -p \
+    /home/ovos/.local/share/mycroft/listener \
+    /home/ovos/.local/share/mycroft/listener/utterances && \
+    chown -R ovos:ovos \
+    /home/ovos/.local/share/mycroft/listener \
+    /home/ovos/.local/share/mycroft/listener/utterances
+
+RUN apt-get update && \
+    apt-get install -y gcc g++ python3-espeak espeak-ng python3-dev libasound2-dev libportaudio2 portaudio19-dev && \
+    rm -rf /var/lib/apt/lists/*
+
+# Ensure the state directory exists and the ovos user owns it
+RUN mkdir -p /home/ovos/.local/state && chown -R ovos:ovos /home/ovos/
+
+# https://huggingface.co/rhasspy/piper-voices/blob/main/en/en_US/mike/medium/en_US-mike-medium.onnx
+# https://huggingface.co/rhasspy/piper-voices/tree/main/en/en_US/mike/medium
+# https://github.com/OpenVoiceOS/ovos-ww-plugin-vosk
+# https://blog.openvoiceos.org/posts/2025-10-06-phoonnx
+# https://github.com/OpenVoiceOS/ovos-ww-plugin-openWakeWord
+
+USER ovos
+
+RUN . ~/.venv/bin/activate && \
+    pip install --no-cache-dir \
+    ovos-ww-plugin-vosk \
+    ovos-vad-plugin-silero \
+    ovos-plugin-manager \
+    ovos-stt-plugin-whispercpp \
+    ovos-ww-plugin-openwakeword
