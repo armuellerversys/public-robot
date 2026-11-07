@@ -1,3 +1,4 @@
+[vehicle-wiki.md](https://github.com/user-attachments/files/34492052/vehicle-wiki.md)
 # Autonomous & AI-Powered Smart Vehicle (K6)
 
 A private educational robotics project featuring a distributed, multi-controller architecture powered by Raspberry Pi hardware, local edge AI, open-source voice control, and a dedicated local wireless infrastructure.
@@ -30,7 +31,7 @@ Handles physical motion control, proximity sensing, dynamic indicators, remote g
 
 - **Drivetrain & Motors:** Two stepper motors for driving and differential steering.
 
-- **Servo Controller:** Waveshare Servo Driver HAT.
+- **Servo Controller motor control:** Adafruit DC and Stepper Motor HAT
 
 - **Obstacle Detection:** 3× HC-SR04 Ultrasonic Ranging Modules.
 
@@ -45,6 +46,8 @@ Handles physical motion control, proximity sensing, dynamic indicators, remote g
 Dedicated to real-time AI perception, natural language voice control, and pan-tilt camera tracking.
 
 - **Edge AI Accelerator:** Raspberry Pi AI Kit (Hailo-8 AI HAT+, 26 TOPS NPU).
+
+- **Servo Controller:** Waveshare Servo Driver HAT. Used for camera movement-
 
 - **Camera Module:** Raspberry Camera Module 3 mounted on a custom 2-axis micro stepper motor pan-tilt assembly (horizontal/vertical movement).
 
