@@ -31,7 +31,7 @@ Handles physical motion control, proximity sensing, dynamic indicators, remote g
 
 - **Drivetrain & Motors:** Two stepper motors for driving and differential steering.
 
-- **Servo Controller motor control:** Adafruit DC and Stepper Motor HAT
+- **DC Motor Controller:** Adafruit DC and Stepper Motor HAT
 
 - **Obstacle Detection:** 3× HC-SR04 Ultrasonic Ranging Modules.
 
