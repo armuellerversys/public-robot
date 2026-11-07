@@ -122,6 +122,6 @@ def show_system_state():
 
 if __name__ == "__main__":
     matrixDisplay.showTemperature()
-    oledText.show_text("Vehicle server ready")
+    oledText.show_text("Fahrzeug server bereit")
     logger.info("Start control server: " + CoreUtils.get_lan_ip())
     app.run(host='0.0.0.0', port=5000, use_reloader=False)
