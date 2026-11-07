@@ -71,7 +71,7 @@ Handles physical motion control, proximity sensing, dynamic indicators, remote g
 Dedicated to real-time AI perception, natural language voice control, and pan-tilt camera tracking.
 
 * **Edge AI Accelerator:** Raspberry Pi AI Kit (Hailo-8 AI HAT+, 26 TOPS NPU).
-* **Servo Controller:** Waveshare Servo Driver HAT.
+* **Servo Controller:** Waveshare Servo Driver HAT. Used for camera movement.
 * **Camera Module:** Raspberry Camera Module 3 mounted on a custom 2-axis micro stepper motor pan-tilt assembly (horizontal/vertical movement).
 * **Computer Vision:** Hailo Application Framework configured for active human face detection, tracking, and video stream web serving.
 * **Voice Control:** **OpenVoiceOS (OVOS)** framework for offline voice command processing, paired with local TTS audio output to an onboard speaker.
