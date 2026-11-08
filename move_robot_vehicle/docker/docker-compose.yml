@@ -1,5 +1,5 @@
 services:
-  vehicle-move:
+  robot_vehicle_move:
     image: robot-vehicle-move
     container_name: robot_vehicle_move
     build:

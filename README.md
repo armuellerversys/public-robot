@@ -1,125 +1,655 @@
+Absolutely. Your documentation already contains a lot of useful technical information, but it can be improved substantially in **structure, consistency, terminology, grammar, and Markdown formatting**.
+
+The main improvements I would recommend are:
+
+- Use a cleaner hierarchy: **Overview → Architecture → Hardware → Software → Deployment → Operations**
+- Correct inconsistent terminology (`PI5-AI` vs `PI5-AI controller`, WLAN/Wi-Fi, OLED naming, etc.)
+- Fix several technical inconsistencies or ambiguous descriptions.
+- Replace raw Markdown escape sequences (`\*\*`) with normal GitHub Markdown.
+- Improve the Docker deployment instructions.
+- Clearly distinguish **hardware architecture** from **software deployment**.
+- Add a warning about the HC-SR04 Echo pin requiring **3.3 V level shifting**.
+- Avoid potentially confusing claims such as "RESTful" where the implementation is simply an internal HTTP API.
+
+Here is a cleaned-up version suitable for your GitHub wiki.
+
+---
+
 # Autonomous & AI-Powered Smart Vehicle (K6)
 
-A private educational robotics project featuring a distributed, multi-controller architecture powered by Raspberry Pi hardware, local edge AI inference, open-source voice control, and a dedicated local wireless infrastructure.
+A private educational robotics project featuring a distributed multi-controller architecture based on Raspberry Pi hardware.
+
+The vehicle combines:
+
+- Autonomous vehicle control
+- Local edge AI inference
+- Computer vision and camera tracking
+- Offline voice control
+- Wireless teleoperation
+- Sensor fusion
+- A dedicated local wireless network
+- Containerized software deployment using Docker
+
+The system is designed as a modular distributed robotics platform where individual functions run on separate Raspberry Pi controllers.
+
+## Project Repository
+
+[GitHub Repository: public-robot](https://github.com/armuellerversys/public-robot?utm_source=chatgpt.com)
 
 ---
 
-## 📌 System Architecture & Network Topology
+# 📌 System Architecture
 
-The system is deployed across **three Raspberry Pi controllers** communicating over an isolated local wireless network, utilizing containerized **Docker** environments for complete modularity and functional separation:
+The system consists of three Raspberry Pi controllers connected through an isolated local wireless network.
 
-* **Local WLAN Infrastructure:** Managed by a dedicated Raspberry Pi 4 router providing an isolated wireless network for all onboard nodes.
-* **Inter-Node Communication:** RESTful HTTP interfaces enabling seamless telemetry exchange and remote display control between controllers.
-* **Core Language & Control:** **Python 3** primary application logic, custom HTML/JS web control panels, and teleoperation via an **8BitDo Pro 2 Bluetooth Gamepad**.
+Each controller has a dedicated responsibility:
 
-```
-                  +---------------------------+
-                  |  8BitDo Pro 2 Gamepad     |
-                  +---------------------------+
-                                | Bluetooth
+| Controller | Primary Responsibility |
+|---|---|
+| **PI4-Router** | WLAN infrastructure and OLED telemetry display |
+| **PI5-Vehicle** | Vehicle movement, sensors, IMU, and gamepad control |
+| **PI5-AI** | Computer vision, edge AI inference, camera control, and voice control |
+
+The software is deployed using Docker containers to provide functional separation and modularity.
+
+---
+
+## Network Topology
+
+```text
+                   +---------------------------+
+                   |     8BitDo Pro 2          |
+                   |        Gamepad            |
+                   +---------------------------+
+                                |
+                            Bluetooth
+                                |
                                 v
+
 +-------------------+     +-------------------+     +-------------------+
-|  PI5-Vehicle      | <-> |   PI4-Router      | <-> |  PI5-AI           |
-|  (Drivetrain /    |     |  (WLAN AP / DHCP  |     |  (Hailo NPU /     |
-|   Sensors / IMU)  |     |   & OLED Server)  |     |   Camera / OVOS)  |
+|                   |     |                   |     |                   |
+|   PI5-Vehicle     |<--->|    PI4-Router     |<--->|      PI5-AI       |
+|                   | Wi-Fi                   | Wi-Fi                   |
+| - Drivetrain      |     | - WLAN Access     |     | - Hailo NPU       |
+| - Sensors         |     |   Point           |     | - Camera           |
+| - IMU             |     | - DHCP            |     | - Computer Vision |
+| - Gamepad Control |     | - OLED Server     |     | - OVOS Voice      |
+|                   |     |                   |     |                   |
 +-------------------+     +-------------------+     +-------------------+
-                                   | HTTP POST
-                                   v
-                          +-------------------+
-                          | Waveshare 1.27"   |
-                          | RGB OLED Display  |
-                          +-------------------+
+                                |
+                                | HTTP
+                                v
+                       +----------------------+
+                       | Waveshare 1.27"      |
+                       | RGB OLED Display     |
+                       | SSD1351              |
+                       +----------------------+
 ```
 
-### 1. Wireless Infrastructure (`PI4-Router`)
-* **Access Point Mode (AP):** The Raspberry Pi 4 is configured using `hostapd` and `dnsmasq` to broadcast a dedicated local Wi-Fi SSID. 
-* **IP Allocation & Routing:** Acts as the local DHCP server, assigning static or dynamic IP addresses to the `PI5-Vehicle` and `PI5-AI` nodes within a private subnet.
-* **Network Isolation:** Keeps all robotic telemetry, video streams, and voice control traffic entirely self-contained and secure.
+---
 
-### 2. Inter-Node HTTP Telemetry & Display Pipeline
-The system utilizes lightweight **RESTful HTTP interfaces** for status display and internal node telemetry:
-* **OLED Telemetry Server (`PI4-Router`):** Runs a Python Flask application exposing a local endpoint (e.g., `POST /api/display`).
-* **Telemetry Push Clients (`PI5-Vehicle` & `PI5-AI`):** Background Python routines on both Pi 5 nodes periodically or event-driven push status updates (e.g., CPU temperature, obstacle warnings, face detection status, or OVOS voice state) via HTTP requests to the Pi 4.
-* **Visual Rendering:** The Pi 4 receives the JSON payload and dynamically updates the attached **Waveshare 1.27-inch RGB OLED Module (SSD1351)**.
+# 📡 1. Wireless Infrastructure — `PI4-Router`
 
-### 3. Client & Control Interfaces
-* **Web Control Panel:** Hosted on the Pi 5 nodes, accessible via browser over the Pi 4 Wi-Fi network to stream the HTML camera view and teleoperate the vehicle.
-* **Gamepad Telemetry:** The `PI5-Vehicle` ingests raw input events from the **8BitDo Pro 2 Bluetooth Gamepad** directly via Linux `evdev`, translating joystick commands into stepper motor PWM signals in real time.
+The Raspberry Pi 4 acts as the network backbone of the vehicle.
+
+## Access Point
+
+The Pi 4 is configured as a dedicated wireless access point using:
+
+- `hostapd`
+- `dnsmasq`
+
+It provides a private Wi-Fi network for the onboard Raspberry Pi controllers.
+
+## DHCP and IP Addressing
+
+The router provides DHCP services and assigns IP addresses to:
+
+- `PI5-Vehicle`
+- `PI5-AI`
+
+Depending on the configuration, nodes may use:
+
+- Static IP addresses
+- DHCP reservations
+- Dynamic DHCP addresses
+
+## Network Isolation
+
+The dedicated WLAN keeps internal robotics traffic separated from external networks.
+
+The local network is used for:
+
+- Vehicle telemetry
+- Inter-controller communication
+- Camera streaming
+- Voice-control communication
+- OLED status updates
+- Web-based control interfaces
 
 ---
 
-## 🛠 Controller Hardware Specs
+# 🔄 2. Inter-Node Telemetry and Display Pipeline
 
-### 📡 1. `PI4-Router` (Network Infrastructure & Telemetry Display)
-Acts as the backbone of the mobile network and provides direct visual feedback for system status.
+The controllers communicate using lightweight HTTP-based APIs.
 
-* **Network Role:** Dedicated local WLAN access point / router.
-* **Display Hardware:** Waveshare 1.27-inch RGB OLED Module (SSD1351).
-* **Display Interface:** Flask-based HTTP web service allowing `PI5-Vehicle` and `PI5-AI` to push real-time system telemetry and status messages directly to the OLED screen.
+## OLED Telemetry Server
 
-### 🚗 2. `PI5-Vehicle` (Drivetrain & Sensor Fusion)
-Handles physical motion control, proximity sensing, dynamic indicators, remote gamepad input, and autonomous navigation subroutines.
+The `PI4-Router` runs a Python Flask application that provides an HTTP endpoint, for example:
 
-* **Drivetrain & Motors:** Two stepper motors for driving and differential steering.
-* **DC Motor Controller:** Adafruit DC and Stepper Motor HAT
-* **Obstacle Detection:** 3× HC-SR04 Ultrasonic Ranging Modules.
-* **IMU Sensing:** Pimoroni ICM20948 (9-DoF Motion Sensor).
-* **Visual Telemetry & Status:** Pimoroni LED SHIM display.
-* **Control Input:** Integrated Bluetooth driver for 8BitDo Pro 2 Gamepad support.
+```text
+POST /api/display
+```
 
-### 🧠 3. `PI5-AI` (Vision, Voice & Edge Inference)
-Dedicated to real-time AI perception, natural language voice control, and pan-tilt camera tracking.
+The endpoint receives JSON status messages from the other controllers.
 
-* **Edge AI Accelerator:** Raspberry Pi AI Kit (Hailo-8 AI HAT+, 26 TOPS NPU).
-* **Servo Controller:** Waveshare Servo Driver HAT. Used for camera movement.
-* **Camera Module:** Raspberry Camera Module 3 mounted on a custom 2-axis micro stepper motor pan-tilt assembly (horizontal/vertical movement).
-* **Computer Vision:** Hailo Application Framework configured for active human face detection, tracking, and video stream web serving.
-* **Voice Control:** **OpenVoiceOS (OVOS)** framework for offline voice command processing, paired with local TTS audio output to an onboard speaker.
+## Telemetry Clients
 
----
+Both `PI5-Vehicle` and `PI5-AI` can send status updates to the OLED server.
 
-## 🔌 Hardware Pinout & Bus Connections
+Examples include:
 
-### `PI5-Vehicle` GPIO & Bus Mapping
+- CPU temperature
+- Vehicle movement status
+- Obstacle warnings
+- AI inference status
+- Face detection status
+- Camera tracking status
+- OVOS voice assistant state
+- General system messages
 
-#### Bus Interfaces (I2C & SPI)
-* **I2C-1 (`SDA` / `SCL`):** Pins 3 (`GPIO 2`) and 5 (`GPIO 3`) — Shared bus for the **Waveshare Servo Driver HAT** and **Pimoroni ICM20948 IMU**.
-* **SPI Bus:** Pins 19 (`MOSI` / `GPIO 10`) and 23 (`SCLK` / `GPIO 11`) — Connected to the **Pimoroni LED SHIM** for status telemetry and visual indicators.
+Telemetry updates can be sent:
 
-#### 40-Pin GPIO Allocation Table
+- Periodically
+- Event-driven
+- When the system state changes
 
-| Pin | Signal / Name | Connected Device | Function / Notes |
-| :--- | :--- | :--- | :--- |
-| **01 / 17** | 3.3V Power | ICM20948 / LED SHIM | Logic power rail |
-| **02 / 04** | 5V Power | Ultrasonic Sensors / HAT logic | 5V Power supply rail |
-| **06 / 09 / 14** | Ground (GND) | All Peripherals | Common system ground |
-| **03** | GPIO 2 (SDA1) | Waveshare HAT & ICM20948 | I2C Data line |
-| **05** | GPIO 3 (SCL1) | Waveshare HAT & ICM20948 | I2C Clock line |
-| **11** | GPIO 17 | Ultrasonic 1 (Front) | Trigger pin (`HC-SR04 #1`) |
-| **13** | GPIO 27 | Ultrasonic 1 (Front) | Echo pin (`HC-SR04 #1` via level shifter) |
-| **15** | GPIO 22 | Ultrasonic 2 (Left) | Trigger pin (`HC-SR04 #2`) |
-| **16** | GPIO 23 | Ultrasonic 2 (Left) | Echo pin (`HC-SR04 #2` via level shifter) |
-| **18** | GPIO 24 | Ultrasonic 3 (Right) | Trigger pin (`HC-SR04 #3`) |
-| **22** | GPIO 25 | Ultrasonic 3 (Right) | Echo pin (`HC-SR04 #3` via level shifter) |
-| **19 / 23** | SPI MOSI / SCLK | Pimoroni LED SHIM | Data & Clock for status LEDs |
-| **32 / 33** | GPIO 12 / 13 | Stepper Driver / PWM | Auxiliary PWM motor control / step signals |
+## OLED Rendering
+
+The Pi 4 processes the received JSON payload and updates the attached:
+
+**Waveshare 1.27-inch RGB OLED Display**
+
+using the SSD1351 display controller.
 
 ---
 
-### `PI5-AI` Bus & Interface Connections
+# 🎮 3. Client and Control Interfaces
 
-| Interface / Slot | Target Component | Protocol / Connection Type | Notes |
-| :--- | :--- | :--- | :--- |
-| **PCIe M.2 Slot (HAT+)** | Raspberry Pi AI Kit (Hailo-8 NPU) | PCIe Gen 2 x1 | Dedicated 26 TOPS edge neural accelerator |
-| **MIPI CSI Camera Port 0** | Raspberry Camera Module 3 | 22-lane FPC Camera Cable | High-resolution live video stream input |
-| **GPIO / PWM Header** | Pan-Tilt Micro Steppers (X/Y Axis) | Direct GPIO / PWM Driver Lines | Horizontal and vertical camera tracking actuation |
-| **USB / Bluetooth / Audio** | Onboard Speaker & Gamepad / OVOS | USB Audio & BlueZ Stack | Local speech output and Bluetooth telemetry link |
+## Web-Based Control Panels
+
+Web interfaces hosted on the Raspberry Pi controllers provide browser-based access to system functions.
+
+Depending on the service, the interfaces can provide:
+
+- Camera video streams
+- Vehicle control
+- AI status information
+- System monitoring
+
+The interfaces are accessible through the private Wi-Fi network provided by `PI4-Router`.
+
+## Gamepad Control
+
+The `PI5-Vehicle` receives input from an **8BitDo Pro 2 Bluetooth Gamepad**.
+
+Linux input events are processed using `evdev`.
+
+Joystick and controller input is translated into vehicle movement commands, which are then converted into motor control signals.
 
 ---
 
-## 📦 Core Framework Dependencies
+# 🛠 Controller Hardware
 
-* **[OpenVoiceOS (OVOS)](https://openvoiceos.org/):** Open-source, privacy-focused voice assistant framework for offline command recognition and speech synthesis.
-* **[Hailo AI Software Suite](https://hailo.ai/):** High-performance neural network execution and vision pipeline processing on the 26 TOPS Hailo-8 platform.
-* **Flask & Requests:** Lightweight HTTP server and client libraries powering the OLED telemetry API and inter-Pi communication.
-* **Docker & Docker Compose:** Microservice container management across all network nodes.
+# 📡 1. `PI4-Router`
+
+**Role:** Network infrastructure and telemetry display
+
+The Raspberry Pi 4 acts as the communication backbone of the vehicle.
+
+### Responsibilities
+
+- Dedicated WLAN access point
+- DHCP server
+- Local network routing
+- OLED telemetry server
+- System status display
+
+### Hardware
+
+- Raspberry Pi 4
+- Waveshare 1.27-inch RGB OLED Display
+- SSD1351 display controller
+
+### Software
+
+- `hostapd`
+- `dnsmasq`
+- Python
+- Flask
+
+---
+
+# 🚗 2. `PI5-Vehicle`
+
+**Role:** Drivetrain, sensors, and vehicle control
+
+The `PI5-Vehicle` controller is responsible for physical movement and sensor processing.
+
+## Drivetrain
+
+- Two stepper motors
+- Differential steering
+- Autonomous movement routines
+
+## Motor Controller
+
+- Adafruit DC & Stepper Motor HAT
+
+## Obstacle Detection
+
+Three HC-SR04 ultrasonic ranging sensors:
+
+- Front
+- Left
+- Right
+
+> ⚠️ **Important:** The HC-SR04 Echo output operates at 5 V. A suitable level shifter or voltage divider must be used before connecting the Echo signal to a Raspberry Pi GPIO input.
+
+## IMU
+
+- Pimoroni ICM20948
+- 9-DoF motion sensor
+
+The IMU can provide:
+
+- Accelerometer data
+- Gyroscope data
+- Magnetometer data
+
+## Visual Status Display
+
+- Pimoroni LED SHIM
+
+Used for:
+
+- Status indicators
+- System feedback
+- Visual warnings
+
+## Control Input
+
+- 8BitDo Pro 2 Bluetooth Gamepad
+- Linux Bluetooth stack
+- `evdev` input processing
+
+---
+
+# 🧠 3. `PI5-AI`
+
+**Role:** Computer vision, edge AI inference, camera control, and voice interaction.
+
+## Edge AI Accelerator
+
+- Raspberry Pi AI Kit
+- Hailo-8 AI accelerator
+- Up to 26 TOPS of AI performance
+
+The accelerator is used for local neural network inference.
+
+## Camera
+
+- Raspberry Pi Camera Module 3
+- MIPI CSI interface
+
+The camera provides the video input for computer vision and streaming applications.
+
+## Pan-Tilt Camera System
+
+The camera is mounted on a custom two-axis pan-tilt mechanism.
+
+The system provides:
+
+- Horizontal movement
+- Vertical movement
+- AI-assisted camera tracking
+
+## Servo / Motor Control
+
+- Waveshare Servo Driver HAT
+
+Used for controlling camera movement, depending on the final mechanical implementation.
+
+## Computer Vision
+
+The system uses the Hailo software framework for:
+
+- Object detection
+- Face detection
+- Human tracking
+- Real-time edge inference
+- Video streaming
+
+## Voice Control
+
+The vehicle uses **OpenVoiceOS (OVOS)** for local voice interaction.
+
+The voice system supports:
+
+- Speech recognition
+- Voice command processing
+- Vehicle-specific skills
+- Text-to-speech output
+- Local speaker playback
+
+---
+
+# 🔌 Hardware Pinout and Bus Connections
+
+# `PI5-Vehicle` GPIO and Bus Mapping
+
+## I²C Interface
+
+**I²C-1**
+
+| Signal | Physical Pin | GPIO |
+|---|---:|---:|
+| SDA | 3 | GPIO 2 |
+| SCL | 5 | GPIO 3 |
+
+Connected devices:
+
+- Pimoroni ICM20948
+- Other compatible I²C peripherals
+
+## SPI Interface
+
+| Signal | Physical Pin | GPIO |
+|---|---:|---:|
+| MOSI | 19 | GPIO 10 |
+| SCLK | 23 | GPIO 11 |
+
+Used for compatible SPI peripherals where required.
+
+---
+
+## 40-Pin GPIO Allocation
+
+| Physical Pin | GPIO / Signal | Connected Device | Function |
+|---|---|---|---|
+| 01 / 17 | 3.3 V | ICM20948 / LED SHIM | Logic power |
+| 02 / 04 | 5 V | Ultrasonic sensors / HAT | 5 V power |
+| 06 / 09 / 14 | GND | All peripherals | Common ground |
+| 03 | GPIO 2 / SDA1 | I²C devices | I²C data |
+| 05 | GPIO 3 / SCL1 | I²C devices | I²C clock |
+| 11 | GPIO 17 | HC-SR04 Front | Trigger |
+| 13 | GPIO 27 | HC-SR04 Front | Echo via level shifter |
+| 15 | GPIO 22 | HC-SR04 Left | Trigger |
+| 16 | GPIO 23 | HC-SR04 Left | Echo via level shifter |
+| 18 | GPIO 24 | HC-SR04 Right | Trigger |
+| 22 | GPIO 25 | HC-SR04 Right | Echo via level shifter |
+| 19 / 23 | SPI MOSI / SCLK | SPI peripheral | Data / clock |
+| 32 / 33 | GPIO 12 / GPIO 13 | Motor control | Auxiliary PWM / control |
+
+> ⚠️ The final GPIO allocation should be kept synchronized with the actual hardware configuration and source code.
+
+---
+
+# 🔌 `PI5-AI` Interfaces
+
+| Interface | Connected Component | Connection Type | Purpose |
+|---|---|---|---|
+| PCIe M.2 / HAT+ | Raspberry Pi AI Kit | PCIe | Hailo AI acceleration |
+| MIPI CSI | Camera Module 3 | CSI camera interface | Video input |
+| GPIO / Driver HAT | Pan-Tilt mechanism | GPIO / I²C / PWM | Camera movement |
+| USB / Audio | Speaker | USB audio | TTS output |
+| Bluetooth | Input devices | BlueZ | Wireless device support |
+
+---
+
+# 📦 Core Software Dependencies
+
+## OpenVoiceOS
+
+[OpenVoiceOS (OVOS)](https://openvoiceos.org/?utm_source=chatgpt.com)
+
+Open-source voice assistant framework used for local speech processing and vehicle-specific voice commands.
+
+## Hailo AI Software
+
+[Hailo AI](https://hailo.ai/?utm_source=chatgpt.com)
+
+Used for local neural network inference and computer vision processing on the Hailo accelerator.
+
+## Flask and Requests
+
+Used for:
+
+- HTTP APIs
+- Telemetry communication
+- OLED status updates
+- Inter-node communication
+
+## Docker and Docker Compose
+
+Used to deploy the software as isolated containerized services.
+
+---
+
+# 📦 System Deployment
+
+The project is divided into separate deployment modules.
+
+Each module contains its own application code and Docker configuration.
+
+## Project Modules
+
+### `hailo_docker_install`
+
+Contains:
+
+- Docker deployment configuration
+- Camera capture software
+- Hailo AI inference software
+- Computer vision functionality
+- Camera control
+
+**Deployment target:** `PI5-AI`
+
+---
+
+### `ovos_docker_install`
+
+Contains:
+
+- Docker deployment for OpenVoiceOS
+- OVOS service configuration
+- Vehicle-specific OVOS skills
+- Voice processing
+- Local TTS functionality
+
+**Deployment target:** `PI5-AI`
+
+---
+
+### `move_robot_vehicle`
+
+Contains:
+
+- Docker deployment configuration
+- Vehicle movement logic
+- Motor control
+- Sensor processing
+- Autonomous movement functionality
+- Gamepad integration
+
+**Deployment target:** `PI5-Vehicle`
+
+---
+
+### `oled_server`
+
+Contains:
+
+- WLAN access point configuration
+- OLED service deployment
+- Flask OLED dashboard server
+- OLED display logic
+
+**Deployment target:** `PI4-Router`
+
+---
+
+# 🐳 Docker Deployment
+
+Each module is deployed independently.
+
+## Build and Start a Module
+
+Navigate to the directory containing the corresponding `docker-compose.yml` file:
+
+```bash
+cd <module-directory>
+```
+
+Build the container images:
+
+```bash
+docker compose build
+```
+
+Start the services in detached mode:
+
+```bash
+docker compose up -d
+```
+
+---
+
+## View Container Status
+
+```bash
+docker ps
+```
+
+View all containers:
+
+```bash
+docker ps -a
+```
+
+---
+
+## View Container Logs
+
+Example:
+
+```bash
+docker logs robot_vehicle_move
+```
+
+Follow logs in real time:
+
+```bash
+docker logs --follow --tail 200 ovos_audio
+```
+
+The same can also be done through Docker Compose:
+
+```bash
+docker compose logs -f
+```
+
+---
+
+## Stop a Deployment
+
+From the directory containing the `docker-compose.yml` file:
+
+```bash
+docker compose down
+```
+
+Stop all running containers:
+
+```bash
+docker stop $(docker ps -q)
+```
+
+---
+
+## Start All Existing Containers
+
+```bash
+docker start $(docker ps -a -q)
+```
+
+> ⚠️ In normal operation, it is generally preferable to manage the project using `docker compose up` and `docker compose down` rather than manually starting every container on the system.
+
+---
+
+# 🖥 Open a Shell Inside a Container
+
+Open a Bash shell in an already running container:
+
+```bash
+docker exec -it ovos_audio bash
+```
+
+Alternatively, start a temporary shell using Docker Compose:
+
+```bash
+docker compose run --rm --no-deps \
+  --entrypoint /bin/bash \
+  ovos_audio
+```
+
+For the vehicle container:
+
+```bash
+docker compose run --rm --no-deps \
+  --entrypoint /bin/bash \
+  robot_vehicle_move
+```
+
+---
+
+# 🧩 Architecture Philosophy
+
+The project follows a distributed robotics architecture.
+
+Each Raspberry Pi controller has a clearly defined responsibility:
+
+```text
+PI4-Router
+    │
+    ├── Wireless Infrastructure
+    ├── DHCP
+    └── OLED Telemetry
+
+PI5-Vehicle
+    │
+    ├── Motor Control
+    ├── Ultrasonic Sensors
+    ├── IMU Processing
+    └── Manual / Autonomous Movement
+
+PI5-AI
+    │
+    ├── Camera
+    ├── Hailo AI Inference
+    ├── Computer Vision
+    ├── Camera Tracking
+    └── OVOS Voice Control
+```
+
+This separation provides several advantages:
+
+- Clear separation of responsibilities
+- Independent Docker deployments
+- Easier debugging
+- Better maintainability
+- Reduced coupling between subsystems
+- Independent development of AI and vehicle control functionality
+- Easier replacement or extension of individual components
+

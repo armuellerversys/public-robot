@@ -1,0 +1,14 @@
+[Unit]
+Description=Waveshare OLED Dashboard Service
+After=network.target
+
+[Service]
+Type=simple
+User=user
+WorkingDirectory=/home/user/python/OLED-waveshare
+ExecStart=/usr/bin/python3 /home/user/python/OLED-waveshare/dashboard_server.py
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=multi-user.target
