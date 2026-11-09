@@ -1,4 +1,5 @@
 import logging
+import os
 from wsgiref import headers
 from mdurl import URL
 import psutil
@@ -6,7 +7,7 @@ import socket
 import requests
 import json
 
-URL_SPEAK = "http://192.168.4.6:5500/speak_local"
+URL_SPEAK = os.getenv('EXTERNAL_SERVICE_URL', 'http://192.168.4.6:5500/speak_local')
 
 # The headers specify that you are sending JSON data
 headers = {

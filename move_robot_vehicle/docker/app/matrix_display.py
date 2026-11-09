@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import threading
 import requests
 import json
@@ -6,7 +7,7 @@ from core_utils import CoreUtils
 from robot_imu import RobotImu
 from magnetometer import Magnetometer
 
-URL = "http://192.168.4.1:5000/showChar"
+URL_MATRIX = os.getenv('MATRIX_SERVICE_URL', 'http://192.168.4.1:5000/showChar')
 
 # The headers specify that you are sending JSON data
 headers = {"Content-Type": "application/json"}
@@ -80,8 +81,8 @@ class MatrixDisplay:
             payload = {"message": text}
 
             # Send a POST request to the server with the JSON data
-            self.logger.info(f"Sending request to {URL}...")
-            response = requests.post(URL, data=json.dumps(payload), headers=headers, timeout=1)
+            self.logger.info(f"Sending request to {URL_MATRIX}...")
+            response = requests.post(URL_MATRIX, data=json.dumps(payload), headers=headers, timeout=1)
 
             # Check if the request was successful
             if response.status_code == 200:
@@ -91,5 +92,5 @@ class MatrixDisplay:
                 self.logger.error(f"Matrix Server Error! Status code: {response.status_code} - {response.text}")
 
         except requests.exceptions.ConnectionError as e:
-            self.logger.error(f"Failed to connect to the Matrix Server at {URL}.")
+            self.logger.error(f"Failed to connect to the Matrix Server at {URL_MATRIX}.")
             self.logger.error(f"Error details: {e}")

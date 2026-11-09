@@ -1,20 +1,3 @@
-Absolutely. Your documentation already contains a lot of useful technical information, but it can be improved substantially in **structure, consistency, terminology, grammar, and Markdown formatting**.
-
-The main improvements I would recommend are:
-
-- Use a cleaner hierarchy: **Overview → Architecture → Hardware → Software → Deployment → Operations**
-- Correct inconsistent terminology (`PI5-AI` vs `PI5-AI controller`, WLAN/Wi-Fi, OLED naming, etc.)
-- Fix several technical inconsistencies or ambiguous descriptions.
-- Replace raw Markdown escape sequences (`\*\*`) with normal GitHub Markdown.
-- Improve the Docker deployment instructions.
-- Clearly distinguish **hardware architecture** from **software deployment**.
-- Add a warning about the HC-SR04 Echo pin requiring **3.3 V level shifting**.
-- Avoid potentially confusing claims such as "RESTful" where the implementation is simply an internal HTTP API.
-
-Here is a cleaned-up version suitable for your GitHub wiki.
-
----
-
 # Autonomous & AI-Powered Smart Vehicle (K6)
 
 A private educational robotics project featuring a distributed multi-controller architecture based on Raspberry Pi hardware.

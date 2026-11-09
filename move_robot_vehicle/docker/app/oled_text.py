@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import threading
 import requests
 import json
@@ -7,8 +8,11 @@ from core_utils import CoreUtils
 
 # The URL of your Flask voice server
 # Make sure to use the correct IP address and port
-URL_TEXT = "http://192.168.4.1:5000/displayText"
-URL_SYSTEM_STATE = "http://192.168.4.1:5000/displaySysParms"
+#URL_TEXT = "http://192.168.4.1:5000/displayText"
+#URL_SYSTEM_STATE = "http://192.168.4.1:5000/displaySysParms"
+
+URL_TEXT = os.getenv('EXTERNAL_SERVICE_URL', 'http://192.168.4.1:5000/displayText')
+URL_SYSTEM_STATE = os.getenv('SYSTEM_STATE_SERVICE_URL', 'http://192.168.4.1:5000/displaySysParms')
 
 
 # The headers specify that you are sending JSON data

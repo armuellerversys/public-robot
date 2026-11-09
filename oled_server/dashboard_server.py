@@ -1,6 +1,8 @@
 import time
 import psutil
 import socket
+from matrix11x7 import Matrix11x7
+from matrix11x7.fonts import font5x7 as font5x7
 from datetime import datetime
 from PIL import Image, ImageDraw, ImageFont
 import sys
@@ -17,6 +19,19 @@ from waveshare_OLED import OLED_1in27_rgb
 ##
 # curl -X POST http://192.168.178.61:5000/displayDashboard
 ##
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+    "%(levelname)s: %(message)s"
+)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+logger.info("OLED monitoring started")
+
 # --- Path Setup ---
 tempdir = os.path.join(os.path.dirname(os.path.dirname(os.path.realpath(__file__))), 'OLED-waveshare')
 picdir = os.path.join(tempdir, 'pic')
@@ -24,7 +39,9 @@ libdir = os.path.join(tempdir, 'lib')
 if os.path.exists(libdir):
     sys.path.append(libdir)
 
-logging.basicConfig(level=logging.INFO)
+matrix11x7 = Matrix11x7(None, 0x77)
+matrix11x7.set_brightness(0.5)
+logger.info("Matrix11x7 display initialized.")
 
 # --- App State & Flask Setup ---
 app = Flask(__name__)
@@ -46,7 +63,7 @@ font_large = None
 
 def init_display():
     global disp, image, draw, font_title, font_body, font_small, font_large
-    logging.info("Initializing OLED display...")
+    logger.info("Initializing OLED display...")
     disp = OLED_1in27_rgb.OLED_1in27_rgb()
     disp.Init()
     disp.clear()
@@ -63,6 +80,8 @@ def init_display():
 
     image = Image.new('RGB', (disp.width, disp.height), 0)
     draw = ImageDraw.Draw(image)
+
+    test_char()
 
 def get_cpu_temp():
     try:
@@ -84,15 +103,19 @@ def get_ip_address():
         s.close()
     return ip
 
-def render_dashboard():
-    now_str = datetime.now().strftime("%H:%M:%S")
+def display_dashboard():
+    now_str = f"WLAN - {datetime.now().strftime('%H:%M:%S')}"
     cpu_usage = psutil.cpu_percent()
     cpu_temp = get_cpu_temp()
     ram = psutil.virtual_memory()
     ip_addr = get_ip_address()
+    render_dashboard(now_str, cpu_usage, cpu_temp, ram.percent, ram.available, ip_addr)
 
+def render_dashboard(now_str, cpu_usage, cpu_temp, ram_percentage, ram_available, ip_addr):
     # Clear Canvas
     draw.rectangle([0, 0, 128, 96], fill=(10, 10, 15))
+    # Clear Canvas
+    draw.rectangle([0, 0, 128, 96], fill=(0, 0, 0))
 
     # Header Bar: Time
     draw.rectangle([0, 0, 128, 16], fill=(30, 40, 60))
@@ -106,14 +129,14 @@ def render_dashboard():
     temp_color = (255, 85, 85) if cpu_temp > 65.0 else (85, 255, 120)
     draw.text((4, 36), f"Temp: {cpu_temp:4.1f}°C", fill=temp_color, font=font_body)
 
-    draw.text((4, 52), f"RAM:  {ram.percent:4.1f}%", fill=(255, 200, 80), font=font_body)
+    draw.text((4, 52), f"RAM:  {ram_percentage:4.1f}%", fill=(255, 200, 80), font=font_body)
     draw.rectangle([75, 55, 122, 61], outline=(60, 60, 80))
-    draw.rectangle([75, 55, 75 + int(0.47 * ram.percent), 61], fill=(255, 200, 80))
+    draw.rectangle([75, 55, 75 + int(0.47 * ram_percentage), 61], fill=(255, 200, 80))
 
     # Footer
     draw.line([0, 68, 128, 68], fill=(50, 50, 65))
     draw.text((4, 71), f"IP: {ip_addr}", fill=(180, 255, 180), font=font_small)
-    draw.text((4, 83), f"Free RAM: {ram.available / (1024**2):.0f}MB", fill=(160, 160, 180), font=font_small)
+    draw.text((4, 83), f"Free RAM: {ram_available/ (1024**2):.0f}MB", fill=(160, 160, 180), font=font_small)
 
 def render_custom_text(header, message):
     # Clear Canvas
@@ -147,9 +170,11 @@ def display_worker():
     while True:
         with mode_lock:
             if display_mode == "dashboard":
-                render_dashboard()
+                display_dashboard()
             elif display_mode == "text":
                 render_custom_text(current_header, current_message)
+            elif display_mode == "state":
+                logger.info("State mode")
             
             # Send current canvas to hardware
             disp.ShowImage(disp.getbuffer(image))
@@ -164,7 +189,7 @@ def api_display_text():
 
     header = data.get('header', 'MESSAGE')
     message = data.get('message', '')
-
+    logger.info(f"Received displayText request: header='{header}', message='{message}'")
     if not message:
         return jsonify({"status": "error", "message": "Field 'message' is required"}), 400
 
@@ -176,6 +201,37 @@ def api_display_text():
 
     return jsonify({"status": "success", "mode": "text", "header": header, "message": message})
 
+@app.route('/displaySysParms', methods=['POST'])
+def api_display_sys_parms():
+    global display_mode
+
+    # Parse incoming JSON payload
+    data = request.get_json()
+
+    if not data:
+        return jsonify({"status": "error", "message": "No JSON data provided"}), 400
+
+    # Extract the required parameters
+    ip = data.get("IP")
+    cpu = data.get("CPU")
+    mem_percentage = data.get("MEM_PERCENT")
+    mem_available = data.get("MEM_AVAILABLE")
+    date = data.get("DATE")
+    temp = data.get("TEMP")
+
+    # Process or log the received parameters
+    logger.info(
+        f"Received Metrics -> IP: {ip} | CPU: {cpu}% | MEM: {mem_percentage}% | Free RAM: {mem_available / (1024**2):.0f}MB | DATE: {date} | TEMP: {temp}°C"
+    )
+    display_mode = "state"
+    disp.clear()
+    render_dashboard(date, cpu, temp, mem_percentage, mem_available, ip)
+
+    return (
+        jsonify({"status": "success", "message": "OLED-System parameters received successfully"}),
+        200,
+    )
+
 @app.route('/displayDashboard', methods=['POST', 'GET'])
 def api_display_dashboard():
     global display_mode
@@ -184,6 +240,25 @@ def api_display_dashboard():
         disp.clear()
 
     return jsonify({"status": "success", "mode": "dashboard"})
+
+@app.route('/showChar', methods=['POST'])
+def show_char():
+    new_msg = request.json.get('message', 'No Message')
+    matrix11x7.clear()  
+    matrix11x7.write_string(new_msg)
+    # Show the buffer
+    matrix11x7.show()
+    logger.info(f"Updated message to: {new_msg}")
+    return {"status": "success", "updated_to": new_msg}, 200
+
+@app.route('/testChar', methods=['GET'])
+def test_char():
+    matrix11x7.clear()  
+    matrix11x7.write_string("OK")
+    # Show the buffer
+    matrix11x7.show()
+    logger.info("testChar endpoint called, displaying 'OK'")
+    return {"status": "success", "updated_to": "OK"}, 200
 
 if __name__ == '__main__':
     # 1. Initialize hardware

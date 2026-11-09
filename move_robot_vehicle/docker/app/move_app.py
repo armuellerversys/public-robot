@@ -14,7 +14,7 @@ from joystick_adapter import JoystickAdapter
 
 # The URL of your Flask voice server
 # Make sure to use the correct IP address and port
-URL = "http://192.168.4.6:5500/speak_local"
+URL_SPEAK = os.getenv('EXTERNAL_SERVICE_URL', 'http://192.168.4.6:5500/speak_local')
 
 MINIMUM_DIST = 0.1
 # The headers specify that you are sending JSON data
@@ -232,8 +232,8 @@ class Move_app:
             }
 
             # Send a POST request to the server with the JSON data
-            self.logger.info(f"Sending request to {URL}...")
-            response = requests.post(URL, data=json.dumps(payload), headers=headers, timeout=15)
+            self.logger.info(f"Sending request to {URL_SPEAK}...")
+            response = requests.post(URL_SPEAK, data=json.dumps(payload), headers=headers, timeout=15)
 
             # Check if the request was successful
             if response.status_code == 200:
@@ -243,7 +243,7 @@ class Move_app:
                 self.logger.error(f"Voice Server Error! Status code: {response.status_code} - {response.text}")
 
         except requests.exceptions.ConnectionError as e:
-            self.logger.error(f"Failed to connect to the Voice Server at {URL}.")
+            self.logger.error(f"Failed to connect to the Voice Server at {URL_SPEAK}.")
             self.logger.error("Please ensure the voice Voice Server is running and accessible.")
             self.logger.error(f"Error details: {e}")      
     

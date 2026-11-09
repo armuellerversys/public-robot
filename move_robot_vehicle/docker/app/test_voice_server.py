@@ -4,7 +4,7 @@ from core_utils import CoreUtils
 
 # The URL of your Flask voice server
 # Make sure to use the correct IP address and port
-URL = "http://192.168.4.6:5500/speak_local"
+URL_SPEAK = "http://192.168.4.6:5500/speak_local"
 
 # The text you want the voice server to speak
 utterance_text = "Hallo albrecht, mein name ist K6, wie geht es dir heute?"
@@ -24,8 +24,8 @@ headers = {
 
 try:
     # Send a POST request to the server with the JSON data
-    logger.info(f"Sending request to {URL}...")
-    response = requests.post(URL, data=json.dumps(payload), headers=headers, timeout=15)
+    logger.info(f"Sending request to {URL_SPEAK}...")
+    response = requests.post(URL_SPEAK, data=json.dumps(payload), headers=headers, timeout=15)
 
     # Check if the request was successful
     if response.status_code == 200:
@@ -36,6 +36,6 @@ try:
         logger.info("Server response:", response.text)
 
 except requests.exceptions.ConnectionError as e:
-    logger.info(f"Failed to connect to the server at {URL}.")
+    logger.info(f"Failed to connect to the server at {URL_SPEAK}.")
     logger.info("Please ensure the voice server is running and accessible.")
     logger.info(f"Error details: {e}")

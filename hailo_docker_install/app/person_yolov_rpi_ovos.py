@@ -27,9 +27,9 @@ RGB_GREEN = (0, 255, 0)
 RGB_YELLOW = (255, 255, 0)
 RGB_AQUA = (0, 255, 255)
 
-URL = "http://192.168.4.8:5001"
+URL_VEHICLE = os.getenv('EXTERNAL_SERVICE_URL', 'http://192.168.4.8:5001')
 
-URL_SPEAK = "http://192.168.4.6:5500/speak_local"
+URL_SPEAK = os.getenv('VOICE_SERVICE_URL', 'http://192.168.4.6:5500/speak_local')
 
 # The headers specify that you are sending JSON data
 headers = {
