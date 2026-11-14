@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 import threading
 import requests
 import json
@@ -7,8 +8,8 @@ from core_utils import CoreUtils
 
 # The URL of your Flask voice server
 # Make sure to use the correct IP address and port
-URL_TEXT = "http://192.168.4.1:5000/displayText"
-URL_SYSTEM_STATE = "http://192.168.4.1:5000/displaySysParms"
+URL_TEXT = os.getenv('TEXT_SERVICE_URL', 'http://192.168.4.1:5000/displayText')
+URL_SYSTEM_STATE = os.getenv('SYSTEM_STATE_SERVICE_URL', 'http://192.168.4.1:5000/displaySysParms')
 
 
 # The headers specify that you are sending JSON data
@@ -33,7 +34,7 @@ class OledText:
            # If the background thread is busy, skip this update to keep loop speed
            pass
         except requests.exceptions.ConnectionError as e:
-           self.logger.error(f"Failed to connect to the Oled Server at {URL}.")
+           self.logger.error("Failed to connect to the Oled Server")
            self.logger.error(f"Error details: {e}")
 
     def show_system_state(self, ip, cpu_usage, ram_percentage, ram_available, cpu_temp):

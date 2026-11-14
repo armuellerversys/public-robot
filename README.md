@@ -66,6 +66,8 @@ The software is deployed using Docker containers to provide functional separatio
                        | Waveshare 1.27"      |
                        | RGB OLED Display     |
                        | SSD1351              |
+                       | PIMORONI             |
+                       | 11x7 LED Matrix      |
                        +----------------------+
 ```
 
@@ -108,6 +110,7 @@ The local network is used for:
 - Camera streaming
 - Voice-control communication
 - OLED status updates
+- 11*7 LED Matrix Breakout
 - Web-based control interfaces
 
 ---
@@ -121,7 +124,8 @@ The controllers communicate using lightweight HTTP-based APIs.
 The `PI4-Router` runs a Python Flask application that provides an HTTP endpoint, for example:
 
 ```text
-POST /api/display
+POST /api/display  -> OLED view
+POST /api/showChar -> 11*7 LED Matrix view
 ```
 
 The endpoint receives JSON status messages from the other controllers.
@@ -154,6 +158,12 @@ The Pi 4 processes the received JSON payload and updates the attached:
 **Waveshare 1.27-inch RGB OLED Display**
 
 using the SSD1351 display controller.
+
+To display fast single digit status an 11x7 LED Matrix is attached:
+
+**Pimoroni 11x7 LED Matrix Breakout**
+
+using the IS31FL3731 driver chip.
 
 ---
 
@@ -196,6 +206,7 @@ The Raspberry Pi 4 acts as the communication backbone of the vehicle.
 - DHCP server
 - Local network routing
 - OLED telemetry server
+- LED Matrix status view
 - System status display
 
 ### Hardware
@@ -249,6 +260,7 @@ The IMU can provide:
 - Accelerometer data
 - Gyroscope data
 - Magnetometer data
+- Temperatur sensor
 
 ## Visual Status Display
 
@@ -535,6 +547,8 @@ Follow logs in real time:
 
 ```bash
 docker logs --follow --tail 200 ovos_audio
+docker logs --follow --tail 200 ovos_skill_vehicle_control
+docker compose logs --since=2m --timestamps ovos_audio
 ```
 
 The same can also be done through Docker Compose:
@@ -608,7 +622,9 @@ PI4-Router
     │
     ├── Wireless Infrastructure
     ├── DHCP
+    ├── Text status display
     └── OLED Telemetry
+
 
 PI5-Vehicle
     │

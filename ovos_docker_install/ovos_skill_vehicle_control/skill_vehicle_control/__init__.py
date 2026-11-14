@@ -1,6 +1,11 @@
+import os
 import requests
+import logging
 from ovos_workshop.skills import OVOSSkill
 from ovos_workshop.decorators import intent_handler
+# Use relative import if core_utils is local to your skill package, 
+# or ensure core_utils is installed in your python environment.
+from .core_utils import CoreUtils  # Change to 'from core_utils import CoreUtils' if it's a global package
 from ovos_bus_client.message import Message
 from ovos_utils.log import LOG
 from ovos_utils import classproperty
@@ -10,15 +15,20 @@ DEFAULT_SETTINGS = {
     "log_level": "INFO"
 }
 
+URL_BASE = os.getenv('EXTERNAL_SERVICE_URL', 'http://192.168.4.8:5001')
+URL_SPEAK = os.getenv('VOICE_SERVICE_URL', 'http://192.168.4.6:5500/speak_local')
+URL_TEXT = os.getenv('TEXT_SERVICE_URL', 'http://192.168.4.1:5000/displayText')
+
+logger = logging.getLogger("VehicleControlSkill")
+logger.setLevel(logging.INFO)
+
 class VehicleControlSkill(OVOSSkill):
     def __init__(self, *args, **kwargs):
+        logger.info("VehicleControlSkill initializing...")
         super().__init__(*args, **kwargs)
-        self.base_url = "http://192.168.4.8:5000/"
 
     @classproperty
     def runtime_requirements(self):
-        # if this isn't defined the skill will
-        # only load if there is internet
         return RuntimeRequirements(
             internet_before_load=False,
             network_before_load=False,
@@ -32,31 +42,26 @@ class VehicleControlSkill(OVOSSkill):
         )
 
     def initialize(self):
-        LOG.info("VehicleControlSkill initialized and ready")
+        logger.info("VehicleControlSkill initialized and ready")
 
     def on_settings_changed(self):
-        """This method is called when the skill settings are changed."""
-        LOG.info("Settings changed!")
+        logger.info("VehicleControlSkill, Settings changed!")
 
     @property
     def log_level(self):
-        """Dynamically get the 'log_level' value from the skill settings file.
-        If it doesn't exist, return the default value.
-        This will reflect live changes to settings.json files (local or from backend)
-        """
         return self.settings.get("log_level", "INFO")
 
-
     @intent_handler('vehicle.intent')
-    def handle_vehicle_intent(self, message):
+    def handle_vehicle_intent(self, message: Message):
         utterance = message.data.get('utterance', '').lower()
+        CoreUtils.say_text(f"Vehicle: {utterance}")
         action = "start" if "start" in utterance else "stop"
         self.speak_dialog("vehicle.command.dialog", wait=True)
         LOG.info(f"Vehicle command: {utterance} / {action}")
         self.play_beep(message)
 
         try:
-            # LOG.info(f"Vehicle {action}: {url}")
+            LOG.info(f"Vehicle {action}: {utterance}")
             response = self.post_cmd(action)
             if response.status_code == 200:
                 self.speak_dialog(f"vehicle.{action}ed.dialog")
@@ -65,29 +70,28 @@ class VehicleControlSkill(OVOSSkill):
                 self.speak("The vehicle controller returned an error.")
         except Exception as e:
             LOG.error(f"HTTP Error: {e}")
-            self.speak("I am unable to reach the vehicle controller.")
+            self.speak("I am unable to reach the vehicle controller.", wait=True)
 
     @intent_handler('vehicle_state.intent')
-    def handle_vehicle_state_intent(self, message):
+    def handle_vehicle_state_intent(self, message: Message):
         LOG.info("Enter Checking vehicle state...")
         self.play_beep(message)
 
         try:
-            # Assuming your API returns JSON like {"state": "running"}
-            url = f"{self.base_url}state"
+            url = f"{URL_BASE}/state"
             LOG.info(f"Execute state request to {url}")
+            CoreUtils.say_text("Intent status check")
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 data = response.json()
                 current_status = data.get("state", "unknown")
-                # Pass the variable 'state' to the .dialog file
                 self.speak_dialog("vehicle_state.dialog", data={"state": current_status})
             else:
                 LOG.info(f"Error execute state request with error: {response.status_code}")
-                self.speak("I couldn't get a valid state from the vehicle")
+                self.speak("I couldn't get a valid state from the vehicle", wait=True)
         except Exception as e:
             LOG.error(f"State check failed: {e}")
-            self.speak("The vehicle system is not responding to status requests.")
+            self.speak("The vehicle system is not responding to status requests.", wait=True)
 
     def play_beep(self, message):
         LOG.info("Enter play_beep...")
@@ -101,24 +105,29 @@ class VehicleControlSkill(OVOSSkill):
         self.bus.emit(
             Message(
                 "mycroft.audio.play_sound",
-                {"uri": sound_path}
+                {"uri": sound_path}, context=message.context
             )
         )
 
     def post_cmd(self, action):
-        url = self.base_url + action
+        url = URL_BASE + f"/{action}"
         LOG.info(f"Post {action}: {url}")
         return requests.post(url)
 
-    ##   $.post('/control', {'command':'set_' + name, 'speed': speed, 'distance': distance });}
     def post_command_json(self, action):
-        ## self.base_url
-        url = self.base_url + "/control"
+        url = URL_BASE + "/control"
         LOG.info(f"Vehicle {action}: {url}")
-        # payload = {f"command": set_{action}, speed: 0, distance: 0"}
-        payload ={"command": "set_stop", "speed": "80", "distance": "1200"}
+        payload = {"command": "set_stop", "speed": "80", "distance": "1200"}
         LOG.info(f"Send control request http post-> {url}")
-        response = requests.post(self.SERVER_MOVE_URL, data=payload, timeout=4)
+        try:
+            response = requests.post(url, json=payload, timeout=4)
+            if response.status_code == 200:
+                LOG.info(f"Vehicle control command sent successfully: {response.status_code}")
+            else:
+                # Fixed multiline string syntax error here
+                LOG.error(f"Vehicle control command failed with status code: {response.status_code} - {response.text}")
+        except Exception as e:
+            LOG.error(f"Failed to send vehicle control command: {e}")
 
 def create_skill():
     return VehicleControlSkill()

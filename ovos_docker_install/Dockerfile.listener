@@ -30,4 +30,5 @@ RUN . ~/.venv/bin/activate && \
     ovos-vad-plugin-silero \
     ovos-plugin-manager \
     ovos-stt-plugin-whispercpp \
-    ovos-ww-plugin-openwakeword
+    ovos-ww-plugin-openwakeword[onnx] \
+    openwakeword

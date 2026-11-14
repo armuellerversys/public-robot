@@ -1,10 +1,10 @@
-stop vehicle
-(we|i) stop vehicle
-start vehicle
-(we|i) start vehicle
+stop K9
+(we|i) stop K9
+start K9
+(we|i) start K9
 (engine|motor) (start|stop)
 (we|i) (engine|motor) (start|stop)
-turn (off|on) the vehicle
-(we|i) turn (off|on) the vehicle
+turn (off|on) the K9
+(we|i) turn (off|on) the K9
 (activate|deactivate) the engine
 (we|i) (activate|deactivate) the engine

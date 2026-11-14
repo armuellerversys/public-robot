@@ -121,6 +121,8 @@ services:
     environment:
       - TZ=Europe/Berlin
       - OVOS_BUS_HOST=127.0.0.1
+      - URL_SPEAK=http://192.168.4.6:5500/speak_local
+      - URL_BASE=http://192.168.4.8:5001
     volumes:
       - ~/ovos/config:/home/ovos/.config/mycroft
       - ~/ovos/ovos-share:/home/ovos/.local/share/mycroft
